@@ -5,17 +5,21 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
 	public float speed;
+	private float speedStore;
 	// variabel untuk menambah speed
 	public float speedMultiplier;
 	// jarak yang dibutuhkan untuk menambah speed
 	public float speedIncreaseMilestone;
+	private float speedIncreaseMilestoneStore;
 	private float speedMilestoneCount;
+	private float speedMilestoneCountStore;
 
 	public float jumpForce;
 	// atur berapa lama player jump
 	public float jumpTime;
 	// mengembalikan value ke 0
 	private float jumpTimeCounter;
+	private bool doubleJump;
 
 	private Rigidbody2D myRigidBody;
 	private CapsuleCollider2D myCollider;
@@ -26,8 +30,21 @@ public class PlayerController : MonoBehaviour
 
 	public LayerMask isItGrounded;
 
-    // Start is called before the first frame update
-    void Start()
+	// panggil kelas GameManager;
+	public GameManager theGameManager;
+
+	public int bronzeScore;
+	public int silverScore;
+	public int goldScore;
+	private ScoreManager theScoreManager;
+
+	// Audio
+	public AudioSource jumpSound;
+	public AudioSource deathSound;
+	public AudioSource coinSound;
+
+	// Start is called before the first frame update
+	void Start()
     {
 		// instansiasi objek
 		myRigidBody = GetComponent<Rigidbody2D>();
@@ -35,6 +52,10 @@ public class PlayerController : MonoBehaviour
 		myAnimator = GetComponent<Animator>();
 		jumpTimeCounter = jumpTime;
 		speedMilestoneCount = speedIncreaseMilestone;
+		speedStore = speed;
+		speedMilestoneCountStore = speedMilestoneCount;
+		speedIncreaseMilestoneStore = speedIncreaseMilestone;
+		theScoreManager = FindObjectOfType<ScoreManager>();
 	}
 
     // Update is called once per frame
@@ -45,7 +66,8 @@ public class PlayerController : MonoBehaviour
 
 		CharMovement();
 	}
-
+	
+	// method pergerakan input karakter
 	void CharMovement()
 	{
 		// kondisi ketika posisi player lebih besar daripada
@@ -67,6 +89,14 @@ public class PlayerController : MonoBehaviour
 			if (grounded)
 			{
 				myRigidBody.velocity = new Vector2(myRigidBody.velocity.x, jumpForce);
+				jumpSound.Play();
+			}
+			if(!grounded && doubleJump)
+			{
+				myRigidBody.velocity = new Vector2(myRigidBody.velocity.x, jumpForce);
+				jumpTimeCounter = jumpTime;
+				doubleJump = false;
+				jumpSound.Play();
 			}
 		}
 
@@ -88,6 +118,7 @@ public class PlayerController : MonoBehaviour
 		if (grounded)
 		{
 			jumpTimeCounter = jumpTime;
+			doubleJump = true;
 		}
 
 		if (Input.GetKey(KeyCode.S))
@@ -104,5 +135,49 @@ public class PlayerController : MonoBehaviour
 		}
 		myAnimator.SetFloat("Speed", myRigidBody.velocity.x);
 		myAnimator.SetBool("isGrounded", grounded);
+	}
+
+	private void OnCollisionEnter2D(Collision2D collision)
+	{
+		// kondisi ketika player menyentuh tag catcher
+		if (collision.gameObject.tag == "catcher")
+		{
+			deathSound.Play();
+			// player akan menjalankan method RestartGame
+			// pada kelas GameManager
+			theGameManager.RestartGame();
+
+			// reset speed ke nilai awal
+			SpeedRestart();
+		}
+	}
+
+	public void SpeedRestart()
+	{
+		// reset speed ke nilai awal
+		speed = speedStore;
+		speedMilestoneCount = speedMilestoneCountStore;
+		speedIncreaseMilestone = speedIncreaseMilestoneStore;
+	}
+
+	private void OnTriggerEnter2D(Collider2D collision)
+	{
+		if (collision.gameObject.tag == "BronzeCoin")
+		{
+			theScoreManager.AddScore(bronzeScore);
+			coinSound.Play();
+		}
+
+		if (collision.gameObject.tag == "SilverCoin")
+		{
+			theScoreManager.AddScore(silverScore);
+			coinSound.Play();
+		}
+
+		if (collision.gameObject.tag == "GoldCoin")
+		{
+			theScoreManager.AddScore(goldScore);
+			coinSound.Play();
+		}
 	}
 }
